@@ -1,5 +1,5 @@
 # UKHSA Respiratory Virus Surveillance
-# Script 03: Descriptive surveillance and seasonality
+# Descriptive surveillance and seasonality
 
 
 # 1. PACKAGES
