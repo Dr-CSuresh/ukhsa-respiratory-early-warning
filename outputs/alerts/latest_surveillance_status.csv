@@ -1,0 +1,7 @@
+disease,date,positivity,expected_positivity,upper_threshold,signal,status
+Adenovirus,2026-09-14,0.69,1.77,3.03,FALSE,Within historical seasonal range
+Influenza,2026-09-14,3.74,1.14,3.1999999999999997,TRUE,Above historical seasonal threshold
+Parainfluenza,2026-09-14,2.01,1.7,4.4159999999999995,FALSE,Within historical seasonal range
+RSV,2026-09-14,0.37,1.1,6.845999999999998,FALSE,Within historical seasonal range
+Rhinovirus,2026-09-14,12.78,17.94,23.348,FALSE,Within historical seasonal range
+hMPV,2026-09-14,0.19,0.59,1.5359999999999998,FALSE,Within historical seasonal range
