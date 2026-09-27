@@ -1,0 +1,7 @@
+disease,seasons_analysed,median_peak_positivity,maximum_peak_positivity
+Adenovirus,9,4.88,6.25
+Influenza,9,25.87,32.64
+Parainfluenza,9,7.75,14.11
+RSV,9,15,25.35
+Rhinovirus,9,24.35,26.81
+hMPV,9,4.99,10.76
