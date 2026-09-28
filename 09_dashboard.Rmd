@@ -1,11 +1,9 @@
 ---
-title: "England Respiratory Surveillance"
-subtitle: "Multi-pathogen surveillance, statistical signals and short-term forecasting"
-author: "Chandhini Suresh"
+title: "Respiratory Surveillance · England"
 output:
   flexdashboard::flex_dashboard:
     orientation: rows
-    vertical_layout: fill
+    vertical_layout: scroll
     theme: cosmo
 ---
 
@@ -23,8 +21,412 @@ library(plotly)
 library(forecast)
 library(DT)
 library(scales)
+library(htmltools)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
 
 ```
+
+
+<style>
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+body {
+  background: #F6F4EF;
+  color: #1C2522;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+.container-fluid {
+  background: #F6F4EF;
+}
+
+.chart-wrapper {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.chart-stage {
+  overflow: visible;
+}
+
+.dashboard-row {
+  margin-bottom: 16px;
+}
+
+p {
+  color: #53605B;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.navbar-inverse {
+  background: #F6F4EF;
+  border-color: #D8D5CD;
+}
+
+.navbar-inverse .navbar-brand {
+  color: #17201D !important;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.navbar-inverse .navbar-nav > li > a {
+  color: #68716D !important;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.navbar-inverse .navbar-nav > li > a:hover {
+  color: #17201D !important;
+  background: transparent !important;
+}
+
+.navbar-inverse .navbar-nav > .active > a,
+.navbar-inverse .navbar-nav > .active > a:hover {
+  color: #17201D !important;
+  background: transparent !important;
+  border-bottom: 2px solid #17201D;
+}
+
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.hero {
+  padding: 46px 28px 30px 28px;
+  max-width: 1100px;
+}
+
+.eyebrow {
+  color: #66736E;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.hero h1 {
+  color: #17201D;
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.hero-copy {
+  color: #58645F;
+  font-size: 17px;
+  line-height: 1.6;
+  max-width: 760px;
+  margin-bottom: 22px;
+}
+
+.update-line {
+  display: inline-block;
+  color: #53605B;
+  font-size: 12px;
+  font-weight: 600;
+  border-top: 1px solid #D8D5CD;
+  padding-top: 12px;
+}
+
+
+/* =========================================================
+   SECTION INTRO
+   ========================================================= */
+
+.section-intro {
+  padding: 12px 12px 4px 12px;
+}
+
+.section-label {
+  color: #69746F;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.section-intro h2 {
+  color: #17201D;
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.section-intro p {
+  max-width: 760px;
+  margin-bottom: 10px;
+}
+
+
+/* =========================================================
+   METRIC CARDS
+   ========================================================= */
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 4px 12px 20px 12px;
+}
+
+.metric-card {
+  background: #FFFFFF;
+  border: 1px solid #DDD9D1;
+  border-radius: 12px;
+  padding: 19px 20px 17px 20px;
+  min-height: 112px;
+}
+
+.metric-label {
+  color: #707A76;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  color: #17201D;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  margin-top: 9px;
+}
+
+.metric-note {
+  color: #7A837F;
+  font-size: 11px;
+  margin-top: 7px;
+}
+
+
+/* =========================================================
+   PATHOGEN CARDS
+   ========================================================= */
+
+.pathogen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 4px 12px 20px 12px;
+}
+
+.pathogen-card {
+  background: #FFFFFF;
+  border: 1px solid #DDD9D1;
+  border-radius: 12px;
+  padding: 19px 20px;
+  min-height: 150px;
+}
+
+.pathogen-name {
+  color: #4E5A55;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.pathogen-value {
+  color: #17201D;
+  font-size: 33px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  margin: 12px 0 15px 0;
+}
+
+.pathogen-unit {
+  color: #69746F;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.status-normal {
+  color: #326657;
+  background: #E8F1ED;
+}
+
+.status-signal {
+  color: #8F352D;
+  background: #F7E8E4;
+}
+
+.status-unknown {
+  color: #666B69;
+  background: #EEEDE9;
+}
+
+
+/* =========================================================
+   INTERPRETATION BOXES
+   ========================================================= */
+
+.note-box {
+  background: #ECEAE4;
+  border-left: 3px solid #687A72;
+  border-radius: 4px;
+  padding: 17px 20px;
+  margin: 10px 12px 22px 12px;
+  color: #47534E;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.note-box strong {
+  color: #17201D;
+}
+
+.signal-box {
+  background: #F6EAE7;
+  border-left: 3px solid #A94A40;
+}
+
+
+/* =========================================================
+   PLOTS
+   ========================================================= */
+
+.chart-title {
+  color: #17201D;
+  font-size: 14px;
+  font-weight: 650;
+  border-bottom: none;
+}
+
+svg text {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
+    sans-serif !important;
+}
+
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+
+table.dataTable {
+  background: #FFFFFF;
+  border-collapse: collapse !important;
+}
+
+table.dataTable thead th {
+  color: #53605B;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #D8D5CD !important;
+}
+
+table.dataTable tbody td {
+  color: #26312D;
+  border-top: 1px solid #EEECE7 !important;
+}
+
+
+/* =========================================================
+   METHOD CARDS
+   ========================================================= */
+
+.method-card {
+  background: #FFFFFF;
+  border: 1px solid #DDD9D1;
+  border-radius: 12px;
+  padding: 23px 24px;
+  margin: 0 12px 16px 12px;
+}
+
+.method-card h3 {
+  color: #17201D;
+  font-size: 19px;
+  font-weight: 650;
+  margin-top: 3px;
+}
+
+.method-card p,
+.method-card li {
+  color: #56625D;
+  line-height: 1.65;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pathogen-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .metric-grid,
+  .pathogen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+</style>
 
 
 ```{r data, include=FALSE}
@@ -40,7 +442,29 @@ respiratory <- read_csv(
   )
 
 
-# 3. CREATE RESPIRATORY SEASON VARIABLES
+# 3. PATHOGEN COLOURS
+
+pathogen_palette <- c(
+  "Influenza" = "#B44A42",
+  "RSV" = "#C9853E",
+  "Rhinovirus" = "#327565",
+  "hMPV" = "#7066A2",
+  "Adenovirus" = "#52789A",
+  "Parainfluenza" = "#9A617D"
+)
+
+
+pathogen_order <- c(
+  "Influenza",
+  "RSV",
+  "Rhinovirus",
+  "hMPV",
+  "Adenovirus",
+  "Parainfluenza"
+)
+
+
+# 4. RESPIRATORY SEASON
 
 respiratory_signals <- respiratory |>
   mutate(
@@ -79,7 +503,7 @@ respiratory_signals <- respiratory |>
   )
 
 
-# 4. IDENTIFY CURRENT RESPIRATORY SEASON
+# 5. CURRENT SEASON
 
 current_season <- respiratory_signals |>
   filter(
@@ -93,7 +517,7 @@ current_season <- respiratory_signals |>
   )
 
 
-# 5. BUILD HISTORICAL SIGNAL BASELINE
+# 6. HISTORICAL BASELINE
 
 historical_baseline <- respiratory_signals |>
   filter(
@@ -121,7 +545,7 @@ historical_baseline <- respiratory_signals |>
   )
 
 
-# 6. APPLY SIGNAL DETECTOR
+# 7. SIGNALS
 
 signals_all <- respiratory_signals |>
   left_join(
@@ -137,8 +561,6 @@ signals_all <- respiratory_signals |>
   )
 
 
-# 7. LATEST SIGNAL STATUS
-
 signals <- signals_all |>
   group_by(
     disease
@@ -151,7 +573,7 @@ signals <- signals_all |>
   ungroup()
 
 
-# 8. LATEST LABORATORY OBSERVATION
+# 8. LATEST DATA
 
 latest_date <- max(
   respiratory$date,
@@ -165,31 +587,46 @@ latest_data <- respiratory |>
   )
 
 
-# 9. RECENT LABORATORY DATA
-
-recent_start <-
-  latest_date - weeks(52)
-
-
 recent_data <- respiratory |>
   filter(
-    date >= recent_start
+    date >= latest_date - weeks(52)
   )
 
 
-# 10. LOAD SYNDROMIC DATA
+signal_recent <- signals_all |>
+  filter(
+    date >= latest_date - weeks(26)
+  )
+
+
+# 9. CURRENT SIGNAL SUMMARY
+
+current_signal_count <- signals |>
+  filter(
+    signal %in% TRUE
+  ) |>
+  nrow()
+
+
+current_signal_names <- signals |>
+  filter(
+    signal %in% TRUE
+  ) |>
+  pull(
+    disease
+  )
+
+
+# 10. NHS 111 DATA
 
 syndromic <- read_csv(
   "data/processed/syndromic_influenza_aligned.csv",
   show_col_types = FALSE
 ) |>
   mutate(
-    week_start =
-      as.Date(week_start)
+    week_start = as.Date(week_start)
   )
 
-
-# 11. LATEST NHS 111 OBSERVATION
 
 latest_nhs111 <- syndromic |>
   slice_max(
@@ -198,8 +635,6 @@ latest_nhs111 <- syndromic |>
     with_ties = FALSE
   )
 
-
-# 12. NHS 111 WEEKLY CHANGE
 
 nhs111_recent <- syndromic |>
   arrange(
@@ -225,7 +660,7 @@ latest_nhs111_change <- nhs111_recent |>
   )
 
 
-# 13. CURRENT FORECAST FUNCTION
+# 11. CURRENT FORECAST FUNCTION
 
 forecast_current <- function(data) {
 
@@ -309,7 +744,7 @@ forecast_current <- function(data) {
 }
 
 
-# 14. GENERATE CURRENT FORECASTS
+# 12. CURRENT FORECASTS
 
 current_forecasts <- respiratory |>
   group_by(
@@ -322,12 +757,87 @@ current_forecasts <- respiratory |>
   bind_rows()
 
 
-# 15. LOAD LEAD-LAG RESULTS
+forecast_history <- respiratory |>
+  filter(
+    date >= latest_date - weeks(26)
+  )
+
+
+# 13. LEAD-LAG DATA
 
 lead_lag <- read_csv(
   "outputs/tables/change_lag_correlations.csv",
   show_col_types = FALSE
 )
+
+
+# 14. COMMON PLOT THEME
+
+surveillance_theme <- theme_minimal(
+  base_size = 12
+) +
+  theme(
+    plot.background =
+      element_rect(
+        fill = "#F6F4EF",
+        colour = NA
+      ),
+
+    panel.background =
+      element_rect(
+        fill = "#F6F4EF",
+        colour = NA
+      ),
+
+    panel.grid.minor =
+      element_blank(),
+
+    panel.grid.major.x =
+      element_blank(),
+
+    panel.grid.major.y =
+      element_line(
+        colour = "#DDDAD3",
+        linewidth = 0.4
+      ),
+
+    axis.text =
+      element_text(
+        colour = "#65706C"
+      ),
+
+    axis.title =
+      element_text(
+        colour = "#65706C",
+        size = 10
+      ),
+
+    strip.text =
+      element_text(
+        colour = "#26312D",
+        face = "bold",
+        size = 11
+      ),
+
+    strip.background =
+      element_blank(),
+
+    legend.position =
+      "none",
+
+    plot.title =
+      element_text(
+        colour = "#17201D",
+        face = "bold",
+        size = 15
+      ),
+
+    plot.subtitle =
+      element_text(
+        colour = "#65706C",
+        size = 11
+      )
+  )
 
 ```
 
@@ -335,156 +845,478 @@ lead_lag <- read_csv(
 Overview
 =====================================
 
-Row
+Row {data-height=270}
 -------------------------------------
 
-### Latest surveillance week
-
 ```{r}
 
-valueBox(
-  format(
-    latest_date,
-    "%d %B %Y"
+div(
+  class = "hero",
+
+  div(
+    class = "eyebrow",
+    "RESPIRATORY SURVEILLANCE · ENGLAND"
   ),
-  caption =
-    "Latest laboratory surveillance week",
-  icon =
-    "fa-calendar"
-)
 
-```
-
-
-### Respiratory pathogens
-
-```{r}
-
-valueBox(
-  n_distinct(
-    respiratory$disease
+  tags$h1(
+    "What's circulating this week?"
   ),
-  caption =
-    "Pathogens monitored",
-  icon =
-    "fa-chart-line"
-)
 
-```
-
-
-### Current statistical signals
-
-```{r}
-
-current_signal_count <- signals |>
-  filter(
-    signal == TRUE
-  ) |>
-  nrow()
-
-
-valueBox(
-  current_signal_count,
-  caption =
-    "Current statistical signals",
-  icon =
-    "fa-exclamation-triangle"
-)
-
-```
-
-
-### Latest NHS 111 ARI calls
-
-```{r}
-
-valueBox(
-  comma(
-    latest_nhs111$weekly_calls
+  div(
+    class = "hero-copy",
+    paste(
+      "Weekly laboratory surveillance across six respiratory viruses,",
+      "with statistical signal detection, short-term forecasting and",
+      "NHS 111 syndromic surveillance."
+    )
   ),
-  caption =
-    "Latest complete week",
-  icon =
-    "fa-phone"
-)
 
-```
-
-
-Row
--------------------------------------
-
-### Current respiratory virus activity
-
-```{r}
-
-latest_plot <- ggplot(
-  latest_data,
-  aes(
-    x = reorder(
-      disease,
-      positivity
-    ),
-    y = positivity
+  div(
+    class = "update-line",
+    paste0(
+      "Latest laboratory data · ",
+      format(
+        latest_date,
+        "%d %B %Y"
+      ),
+      "  ·  UKHSA public surveillance data"
+    )
   )
-) +
-  geom_col() +
-  coord_flip() +
-  labs(
-    x = NULL,
-    y = "PCR positivity (%)"
-  ) +
-  theme_minimal()
-
-
-ggplotly(
-  latest_plot
 )
 
 ```
 
 
-### Latest surveillance table
+Row {data-height=155}
+-------------------------------------
 
 ```{r}
 
-latest_table <- latest_data |>
-  select(
-    disease,
-    positivity
+tagList(
+
+  div(
+    class = "metric-grid",
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "Pathogens monitored"
+      ),
+
+      div(
+        class = "metric-value",
+        n_distinct(
+          respiratory$disease
+        )
+      ),
+
+      div(
+        class = "metric-note",
+        "Weekly PCR positivity"
+      )
+    ),
+
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "Current signals"
+      ),
+
+      div(
+        class = "metric-value",
+        current_signal_count
+      ),
+
+      div(
+        class = "metric-note",
+        "Above historical seasonal threshold"
+      )
+    ),
+
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "Surveillance history"
+      ),
+
+      div(
+        class = "metric-value",
+        n_distinct(
+          respiratory$date
+        )
+      ),
+
+      div(
+        class = "metric-note",
+        "Weeks of laboratory data"
+      )
+    ),
+
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "NHS 111 ARI calls"
+      ),
+
+      div(
+        class = "metric-value",
+        comma(
+          latest_nhs111$weekly_calls
+        )
+      ),
+
+      div(
+        class = "metric-note",
+        "Latest aligned complete week"
+      )
+    )
+  )
+)
+
+```
+
+
+Row {data-height=110}
+-------------------------------------
+
+```{r}
+
+div(
+  class = "section-intro",
+
+  div(
+    class = "section-label",
+    "CURRENT ACTIVITY"
+  ),
+
+  tags$h2(
+    "Six respiratory viruses, at a glance."
+  ),
+
+  tags$p(
+    "Latest reported PCR positivity and statistical status relative to historical seasonal activity."
+  )
+)
+
+```
+
+
+Row {data-height=360}
+-------------------------------------
+
+```{r}
+
+card_data <- signals |>
+  mutate(
+    disease =
+      factor(
+        disease,
+        levels = pathogen_order
+      )
   ) |>
   arrange(
-    desc(positivity)
-  ) |>
+    disease
+  )
+
+
+cards <- lapply(
+  seq_len(
+    nrow(card_data)
+  ),
+  function(i) {
+
+    row <- card_data[i, ]
+
+    disease_name <-
+      as.character(
+        row$disease
+      )
+
+    card_colour <-
+      unname(
+        pathogen_palette[
+          disease_name
+        ]
+      )
+
+    status_text <-
+      if (
+        is.na(
+          row$signal
+        )
+      ) {
+
+        "Baseline unavailable"
+
+      } else if (
+        row$signal
+      ) {
+
+        "Above expected"
+
+      } else {
+
+        "Expected range"
+
+      }
+
+
+    status_class <-
+      if (
+        is.na(
+          row$signal
+        )
+      ) {
+
+        "status status-unknown"
+
+      } else if (
+        row$signal
+      ) {
+
+        "status status-signal"
+
+      } else {
+
+        "status status-normal"
+
+      }
+
+
+    div(
+      class = "pathogen-card",
+
+      style =
+        paste0(
+          "border-top: 3px solid ",
+          card_colour,
+          ";"
+        ),
+
+      div(
+        class = "pathogen-name",
+        disease_name
+      ),
+
+      div(
+        class = "pathogen-value",
+
+        sprintf(
+          "%.2f%%",
+          row$positivity
+        ),
+
+        tags$span(
+          class = "pathogen-unit",
+          " PCR positivity"
+        )
+      ),
+
+      tags$span(
+        class = status_class,
+        status_text
+      )
+    )
+  }
+)
+
+
+div(
+  class = "pathogen-grid",
+  tagList(
+    cards
+  )
+)
+
+```
+
+
+Row {data-height=460}
+-------------------------------------
+
+### Current activity
+
+```{r}
+
+latest_plot_data <- latest_data |>
   mutate(
-    positivity =
-      round(
-        positivity,
-        2
+    disease =
+      factor(
+        disease,
+        levels = pathogen_order
       )
   )
 
 
-datatable(
-  latest_table,
-  rownames = FALSE,
-  options = list(
-    dom = "t",
-    pageLength = 6
+activity_plot <- ggplot(
+  latest_plot_data,
+  aes(
+    x = positivity,
+    y = reorder(
+      disease,
+      positivity
+    ),
+    colour = disease
+  )
+) +
+
+  geom_segment(
+    aes(
+      x = 0,
+      xend = positivity,
+      yend = reorder(
+        disease,
+        positivity
+      )
+    ),
+    linewidth = 2.2,
+    alpha = 0.35
+  ) +
+
+  geom_point(
+    size = 4
+  ) +
+
+  geom_text(
+    aes(
+      label =
+        sprintf(
+          "%.2f%%",
+          positivity
+        )
+    ),
+    colour = "#26312D",
+    hjust = -0.25,
+    size = 3.6
+  ) +
+
+  scale_colour_manual(
+    values = pathogen_palette
+  ) +
+
+  scale_x_continuous(
+    labels =
+      function(x) {
+        paste0(
+          x,
+          "%"
+        )
+      },
+
+    expand =
+      expansion(
+        mult = c(
+          0,
+          0.18
+        )
+      )
+  ) +
+
+  labs(
+    x = "PCR positivity",
+    y = NULL
+  ) +
+
+  surveillance_theme
+
+
+ggplotly(
+  activity_plot
+)
+
+```
+
+
+Row {data-height=120}
+-------------------------------------
+
+```{r}
+
+if (
+  current_signal_count == 0
+) {
+
+  div(
+    class = "note-box",
+
+    tags$strong(
+      "Current surveillance note. "
+    ),
+
+    "No pathogen currently exceeds its historical seasonal 95th percentile threshold."
+  )
+
+} else {
+
+  div(
+    class = "note-box signal-box",
+
+    tags$strong(
+      "Current surveillance note. "
+    ),
+
+    paste0(
+      paste(
+        current_signal_names,
+        collapse = ", "
+      ),
+      ifelse(
+        current_signal_count == 1,
+        " is",
+        " are"
+      ),
+      " currently above the historical seasonal threshold. ",
+      "This is a statistical signal and is not equivalent to a confirmed outbreak."
+    )
+  )
+}
+
+```
+
+
+Trends
+=====================================
+
+Row {data-height=125}
+-------------------------------------
+
+```{r}
+
+div(
+  class = "section-intro",
+
+  div(
+    class = "section-label",
+    "SURVEILLANCE TRENDS"
+  ),
+
+  tags$h2(
+    "How has activity changed over the last year?"
+  ),
+
+  tags$p(
+    "Weekly PCR positivity for each respiratory pathogen over the most recent 52 weeks."
   )
 )
 
 ```
 
 
-Recent Trends
-=====================================
-
-Row
+Row {data-height=720}
 -------------------------------------
 
-### Last 12 months
+### Recent pathogen activity
 
 ```{r}
 
@@ -492,22 +1324,36 @@ recent_plot <- ggplot(
   recent_data,
   aes(
     x = date,
-    y = positivity
+    y = positivity,
+    colour = disease
   )
 ) +
+
   geom_line(
-    linewidth = 0.7
+    linewidth = 0.85
   ) +
+
   facet_wrap(
     ~ disease,
     scales = "free_y",
     ncol = 2
   ) +
+
+  scale_colour_manual(
+    values = pathogen_palette
+  ) +
+
+  scale_x_date(
+    date_labels = "%b",
+    date_breaks = "2 months"
+  ) +
+
   labs(
     x = NULL,
     y = "PCR positivity (%)"
   ) +
-  theme_minimal()
+
+  surveillance_theme
 
 
 ggplotly(
@@ -520,44 +1366,159 @@ ggplotly(
 Signals
 =====================================
 
-Row
+Row {data-height=125}
 -------------------------------------
 
-### Current statistical signal status
+```{r}
+
+div(
+  class = "section-intro",
+
+  div(
+    class = "section-label",
+    "STATISTICAL SURVEILLANCE"
+  ),
+
+  tags$h2(
+    "Is anything behaving unusually?"
+  ),
+
+  tags$p(
+    paste(
+      "Observed activity is compared with the historical distribution",
+      "for the corresponding point in the respiratory season."
+    )
+  )
+)
+
+```
+
+
+Row {data-height=700}
+-------------------------------------
+
+### Observed activity and seasonal thresholds
+
+```{r}
+
+signal_plot <- ggplot(
+  signal_recent,
+  aes(
+    x = date
+  )
+) +
+
+  geom_line(
+    aes(
+      y = upper_threshold
+    ),
+    colour = "#A8ADA9",
+    linewidth = 0.7,
+    linetype = "dashed"
+  ) +
+
+  geom_line(
+    aes(
+      y = positivity,
+      colour = disease
+    ),
+    linewidth = 0.9
+  ) +
+
+  geom_point(
+    data =
+      signal_recent |>
+      filter(
+        signal %in% TRUE
+      ),
+
+    aes(
+      y = positivity
+    ),
+
+    colour = "#A94036",
+    fill = "#F6F4EF",
+    shape = 21,
+    stroke = 1.2,
+    size = 3
+  ) +
+
+  facet_wrap(
+    ~ disease,
+    scales = "free_y",
+    ncol = 2
+  ) +
+
+  scale_colour_manual(
+    values = pathogen_palette
+  ) +
+
+  scale_x_date(
+    date_labels = "%b",
+    date_breaks = "2 months"
+  ) +
+
+  labs(
+    x = NULL,
+    y = "PCR positivity (%)",
+    caption =
+      "Dashed line = historical seasonal 95th percentile · highlighted points = statistical signals"
+  ) +
+
+  surveillance_theme
+
+
+ggplotly(
+  signal_plot
+)
+
+```
+
+
+Row {data-height=300}
+-------------------------------------
+
+### Latest signal status
 
 ```{r}
 
 signal_table <- signals |>
-  select(
-    disease,
-    date,
-    positivity,
-    expected,
-    upper_threshold,
-    signal
-  ) |>
-  mutate(
-    positivity =
+  transmute(
+    Pathogen =
+      disease,
+
+    Week =
+      date,
+
+    `Observed (%)` =
       round(
         positivity,
         2
       ),
 
-    expected =
+    `Expected (%)` =
       round(
         expected,
         2
       ),
 
-    upper_threshold =
+    `Threshold (%)` =
       round(
         upper_threshold,
         2
+      ),
+
+    Status =
+      case_when(
+        is.na(signal) ~
+          "Baseline unavailable",
+
+        signal ~
+          "Above expected",
+
+        TRUE ~
+          "Expected range"
       )
-  ) |>
-  arrange(
-    desc(signal),
-    disease
   )
 
 
@@ -566,44 +1527,66 @@ datatable(
   rownames = FALSE,
   options = list(
     dom = "t",
-    pageLength = 6
+    pageLength = 6,
+    ordering = FALSE
   )
 )
 
 ```
 
 
-Row
+Row {data-height=150}
 -------------------------------------
 
-### Signal interpretation
+<div class="note-box">
 
-A statistical signal occurs when observed positivity exceeds the
-historical season-specific 95th percentile threshold.
+<strong>How to read this.</strong>
 
-These are provisional statistical signals and should not be
-interpreted as confirmation of an outbreak.
+A signal occurs when observed positivity exceeds the historical 95th
+percentile for the corresponding week of the respiratory season.
+Signals identify unusual statistical activity for further investigation;
+they do not confirm that an outbreak is occurring.
 
-The signal-detection approach was retrospectively evaluated using
-leave-one-season-out validation.
+</div>
 
 
-Forecasts
+Forecast
 =====================================
 
-Row
+Row {data-height=125}
 -------------------------------------
-
-### Current 1–4 week forecasts
 
 ```{r}
 
-forecast_history <- respiratory |>
-  filter(
-    date >=
-      latest_date - weeks(26)
-  )
+div(
+  class = "section-intro",
 
+  div(
+    class = "section-label",
+    "SHORT-TERM OUTLOOK"
+  ),
+
+  tags$h2(
+    "What might happen over the next four weeks?"
+  ),
+
+  tags$p(
+    paste(
+      "Model-based projections generated from surveillance available",
+      "up to the latest reporting week."
+    )
+  )
+)
+
+```
+
+
+Row {data-height=750}
+-------------------------------------
+
+### Observed activity and ARIMA projections
+
+```{r}
 
 forecast_plot <- ggplot() +
 
@@ -613,10 +1596,11 @@ forecast_plot <- ggplot() +
 
     aes(
       x = date,
-      y = positivity
+      y = positivity,
+      colour = disease
     ),
 
-    linewidth = 0.7
+    linewidth = 0.85
   ) +
 
   geom_ribbon(
@@ -629,7 +1613,8 @@ forecast_plot <- ggplot() +
       ymax = upper_95
     ),
 
-    alpha = 0.15
+    fill = "#8F9995",
+    alpha = 0.10
   ) +
 
   geom_ribbon(
@@ -642,7 +1627,8 @@ forecast_plot <- ggplot() +
       ymax = upper_80
     ),
 
-    alpha = 0.25
+    fill = "#77827D",
+    alpha = 0.16
   ) +
 
   geom_line(
@@ -651,11 +1637,12 @@ forecast_plot <- ggplot() +
 
     aes(
       x = date,
-      y = forecast
+      y = forecast,
+      colour = disease
     ),
 
     linetype = "dashed",
-    linewidth = 0.8
+    linewidth = 0.95
   ) +
 
   facet_wrap(
@@ -664,17 +1651,23 @@ forecast_plot <- ggplot() +
     ncol = 2
   ) +
 
-  labs(
-    x = NULL,
-
-    y =
-      "PCR positivity (%)",
-
-    caption =
-      "Dashed line: ARIMA forecast | Shading: 80% and 95% prediction intervals"
+  scale_colour_manual(
+    values = pathogen_palette
   ) +
 
-  theme_minimal()
+  scale_x_date(
+    date_labels = "%b",
+    date_breaks = "2 months"
+  ) +
+
+  labs(
+    x = NULL,
+    y = "PCR positivity (%)",
+    caption =
+      "Solid line = observed · dashed line = forecast · shading = 80% and 95% prediction intervals"
+  ) +
+
+  surveillance_theme
 
 
 ggplotly(
@@ -684,7 +1677,7 @@ ggplotly(
 ```
 
 
-Row
+Row {data-height=330}
 -------------------------------------
 
 ### Forecast values
@@ -692,20 +1685,40 @@ Row
 ```{r}
 
 forecast_table <- current_forecasts |>
-  mutate(
-    across(
-      c(
-        forecast,
-        lower_80,
-        upper_80,
-        lower_95,
-        upper_95
+  transmute(
+    Pathogen =
+      disease,
+
+    Week =
+      date,
+
+    Horizon =
+      paste0(
+        horizon,
+        ifelse(
+          horizon == 1,
+          " week",
+          " weeks"
+        )
       ),
-      ~ round(
-        .x,
+
+    Forecast =
+      round(
+        forecast,
+        2
+      ),
+
+    `80% lower` =
+      round(
+        lower_80,
+        2
+      ),
+
+    `80% upper` =
+      round(
+        upper_80,
         2
       )
-    )
   )
 
 
@@ -720,10 +1733,127 @@ datatable(
 ```
 
 
-Syndromic Surveillance
+Row {data-height=155}
+-------------------------------------
+
+<div class="note-box">
+
+<strong>Forecast interpretation.</strong>
+
+ARIMA is used here as a simple current operational forecasting model.
+In rolling-origin evaluation during 2025/26, ARIMA produced the lowest
+MAE in 19 of 24 pathogen-horizon comparisons. Performance nevertheless
+varied by pathogen and horizon, and seasonal-naïve forecasting
+outperformed ARIMA for adenovirus at several longer horizons.
+
+</div>
+
+
+NHS 111
 =====================================
 
-Row
+Row {data-height=125}
+-------------------------------------
+
+```{r}
+
+div(
+  class = "section-intro",
+
+  div(
+    class = "section-label",
+    "SYNDROMIC SURVEILLANCE"
+  ),
+
+  tags$h2(
+    "What are NHS 111 respiratory calls showing?"
+  ),
+
+  tags$p(
+    paste(
+      "Acute respiratory infection calls provide a broader measure",
+      "of respiratory healthcare activity alongside laboratory surveillance."
+    )
+  )
+)
+
+```
+
+
+Row {data-height=155}
+-------------------------------------
+
+```{r}
+
+tagList(
+
+  div(
+    class = "metric-grid",
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "Latest weekly calls"
+      ),
+
+      div(
+        class = "metric-value",
+        comma(
+          latest_nhs111$weekly_calls
+        )
+      ),
+
+      div(
+        class = "metric-note",
+        format(
+          latest_nhs111$week_start,
+          "%d %B %Y"
+        )
+      )
+    ),
+
+
+    div(
+      class = "metric-card",
+
+      div(
+        class = "metric-label",
+        "Week-on-week change"
+      ),
+
+      div(
+        class = "metric-value",
+
+        paste0(
+          ifelse(
+            latest_nhs111_change$percent_change > 0,
+            "+",
+            ""
+          ),
+
+          round(
+            latest_nhs111_change$percent_change,
+            1
+          ),
+
+          "%"
+        )
+      ),
+
+      div(
+        class = "metric-note",
+        "Compared with previous week"
+      )
+    )
+  )
+)
+
+```
+
+
+Row {data-height=470}
 -------------------------------------
 
 ### NHS 111 acute respiratory infection activity
@@ -733,7 +1863,12 @@ Row
 nhs111_plot <- syndromic |>
   filter(
     week_start >=
-      max(week_start) - weeks(52)
+      max(
+        week_start
+      ) -
+      weeks(
+        52
+      )
   ) |>
   ggplot(
     aes(
@@ -741,14 +1876,40 @@ nhs111_plot <- syndromic |>
       y = weekly_calls
     )
   ) +
+
   geom_line(
-    linewidth = 0.8
+    colour = "#327565",
+    linewidth = 1
   ) +
+
+  geom_point(
+    data =
+      latest_nhs111,
+
+    aes(
+      x = week_start,
+      y = weekly_calls
+    ),
+
+    colour = "#327565",
+    size = 3
+  ) +
+
+  scale_y_continuous(
+    labels = comma
+  ) +
+
+  scale_x_date(
+    date_labels = "%b",
+    date_breaks = "2 months"
+  ) +
+
   labs(
     x = NULL,
     y = "Weekly NHS 111 calls"
   ) +
-  theme_minimal()
+
+  surveillance_theme
 
 
 ggplotly(
@@ -758,31 +1919,28 @@ ggplotly(
 ```
 
 
-### Latest weekly change
+Row {data-height=115}
+-------------------------------------
 
 ```{r}
 
-valueBox(
-  paste0(
-    round(
-      latest_nhs111_change$percent_change,
-      1
-    ),
-    "%"
+div(
+  class = "section-intro",
+
+  div(
+    class = "section-label",
+    "LEAD–LAG ANALYSIS"
   ),
-  caption =
-    "Change in NHS 111 ARI calls from previous week",
-  icon =
-    "fa-chart-line"
+
+  tags$h2(
+    "Does syndromic activity give earlier warning?"
+  )
 )
 
 ```
 
 
-Lead-Lag Analysis
-=====================================
-
-Row
+Row {data-height=430}
 -------------------------------------
 
 ### Week-to-week changes
@@ -799,20 +1957,25 @@ lead_lag_plot <- ggplot(
 
   geom_hline(
     yintercept = 0,
-    linetype = "dashed"
+    colour = "#BFC2BE",
+    linewidth = 0.5
   ) +
 
   geom_vline(
     xintercept = 0,
-    linetype = "dotted"
+    colour = "#7B8581",
+    linetype = "dotted",
+    linewidth = 0.7
   ) +
 
   geom_line(
-    linewidth = 0.8
+    colour = "#327565",
+    linewidth = 1
   ) +
 
   geom_point(
-    size = 2.5
+    colour = "#327565",
+    size = 3
   ) +
 
   scale_x_continuous(
@@ -821,10 +1984,10 @@ lead_lag_plot <- ggplot(
 
   labs(
     x = "Lag (weeks)",
-    y = "Pearson correlation"
+    y = "Correlation"
   ) +
 
-  theme_minimal()
+  surveillance_theme
 
 
 ggplotly(
@@ -834,97 +1997,151 @@ ggplotly(
 ```
 
 
-### Interpretation
+Row {data-height=190}
+-------------------------------------
 
-Across the available overlapping surveillance period, the strongest
-association between week-to-week changes in NHS 111 acute respiratory
-infection calls and influenza PCR positivity occurred at lag 0.
+<div class="note-box">
 
-This indicates that the strongest observed relationship was
-contemporaneous.
+<strong>What did we find?</strong>
 
-Season-specific analysis identified a peak at approximately +1 week
-in 2024/25 and -1 week in 2025/26.
+Across 134 overlapping weeks, the strongest association between
+week-to-week changes in NHS 111 acute respiratory infection calls and
+influenza PCR positivity occurred contemporaneously at <strong>lag 0
+(r = 0.498)</strong>.
 
-The available data therefore do not demonstrate a consistent syndromic
-lead time.
+Season-specific results differed: the peak occurred at approximately
++1 week in 2024/25 and -1 week in 2025/26. The available data therefore
+do not demonstrate a consistent syndromic lead time.
+
+</div>
 
 
-Methods & Limitations
+Methods
 =====================================
 
-### Data
+Row {data-height=120}
+-------------------------------------
 
-Laboratory and syndromic surveillance data were obtained from the
-UK Health Security Agency dashboard API.
+```{r}
 
-The laboratory surveillance dataset contains weekly PCR positivity for
-six respiratory pathogens:
+div(
+  class = "section-intro",
 
-- Influenza
-- Respiratory syncytial virus
-- Human metapneumovirus
-- Rhinovirus
-- Adenovirus
-- Parainfluenza
+  div(
+    class = "section-label",
+    "METHODOLOGY"
+  ),
 
+  tags$h2(
+    "How this surveillance system works."
+  ),
 
-### Statistical signal detection
+  tags$p(
+    "A reproducible R workflow built using publicly available UKHSA surveillance data."
+  )
+)
 
-Expected activity was calculated from historical observations for the
-corresponding week of the respiratory season.
-
-Observations above the empirical historical 95th percentile were
-classified as statistical signals.
-
-This detector is exploratory and was retrospectively evaluated using
-leave-one-season-out validation. Signals should not be interpreted as
-confirmed outbreaks.
+```
 
 
-### Forecasting
+Row
+-------------------------------------
 
-Forecasts are generated for 1–4 weeks ahead.
+<div class="method-card">
 
-Three forecasting approaches were evaluated previously using
-rolling-origin validation:
+<div class="section-label">DATA</div>
 
-- Seasonal naïve
-- ARIMA
-- STL-ETS
+### Laboratory surveillance
 
-During the 2025/26 evaluation, ARIMA produced the lowest MAE in
+Weekly PCR positivity is monitored for influenza, RSV, rhinovirus,
+human metapneumovirus, adenovirus and parainfluenza in England.
+
+The cleaned laboratory dataset contains 481 weekly observations per
+pathogen from July 2017 onwards.
+
+</div>
+
+
+<div class="method-card">
+
+<div class="section-label">SIGNAL DETECTION</div>
+
+### Identifying unusual activity
+
+For each pathogen and week of the respiratory season, historical
+observations are used to calculate a median expected value and empirical
+95th percentile threshold.
+
+Activity above this threshold is classified as a statistical signal.
+
+The method was subsequently evaluated using leave-one-season-out
+retrospective validation to avoid evaluating historical observations
+against a baseline containing those same observations.
+
+</div>
+
+
+<div class="method-card">
+
+<div class="section-label">FORECASTING</div>
+
+### Looking 1–4 weeks ahead
+
+Seasonal naïve, ARIMA and STL-ETS forecasting approaches were compared
+using rolling weekly forecast origins.
+
+During the 2025/26 evaluation period, ARIMA achieved the lowest MAE in
 19 of 24 pathogen-horizon comparisons.
 
-Performance varied by pathogen and forecast horizon. In particular,
-seasonal naïve forecasting outperformed ARIMA for adenovirus at several
-longer horizons.
+This dashboard uses ARIMA for current projections as a practical
+simplification rather than assuming that one model is optimal for every
+pathogen.
 
-The dashboard uses ARIMA as a simple current operational forecasting
-model rather than implying that it is universally optimal.
-
-
-### Syndromic surveillance
-
-NHS 111 acute respiratory infection calls measure syndromic healthcare
-activity rather than laboratory-confirmed influenza.
-
-The overlapping NHS 111 and influenza dataset contains 134 weeks
-from February 2024 onwards.
-
-Only two complete respiratory seasons were available for
-season-specific lead-lag comparison.
+</div>
 
 
-### Interpretation
+<div class="method-card">
 
-This dashboard is an exploratory epidemiological surveillance project.
+<div class="section-label">SYNDROMIC SURVEILLANCE</div>
+
+### NHS 111 acute respiratory infection calls
+
+Daily NHS 111 acute respiratory infection calls were aggregated to
+complete epidemiological weeks and aligned with influenza laboratory
+surveillance.
+
+NHS 111 activity represents broad respiratory healthcare-seeking
+behaviour and is not specific to influenza.
+
+</div>
+
+
+<div class="method-card">
+
+<div class="section-label">LIMITATIONS</div>
+
+### How the dashboard should be interpreted
+
+This is an exploratory epidemiological surveillance and data-science
+project rather than an operational public-health alerting system.
 
 Statistical signals indicate unusual observations rather than confirmed
-outbreaks.
+outbreaks. Forecast performance may vary between seasons, PCR positivity
+can be affected by testing behaviour and surveillance practices, and
+only two complete respiratory seasons were available for the
+season-specific NHS 111 lead-lag analysis.
 
-Forecasts contain uncertainty and should be interpreted alongside
-observed surveillance data and wider epidemiological evidence.
+</div>
 
-Lead-lag correlations describe temporal association and do not establish
-causality or a consistent predictive lead.
+
+<div class="method-card">
+
+<div class="section-label">ABOUT THIS PROJECT</div>
+
+### Reproducible public-health surveillance in R
+
+Data are derived from public UK Health Security Agency surveillance
+sources. This dashboard is an independent portfolio project and is not
+an official UKHSA product or public-health advisory.
+
+</div>
