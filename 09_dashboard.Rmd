@@ -581,7 +581,7 @@ Row
 A statistical signal occurs when observed positivity exceeds the
 historical season-specific 95th percentile threshold.
 
-These are **provisional statistical signals** and should not be
+These are provisional statistical signals and should not be
 interpreted as confirmation of an outbreak.
 
 The signal-detection approach was retrospectively evaluated using
@@ -838,13 +838,13 @@ ggplotly(
 
 Across the available overlapping surveillance period, the strongest
 association between week-to-week changes in NHS 111 acute respiratory
-infection calls and influenza PCR positivity occurred at **lag 0**.
+infection calls and influenza PCR positivity occurred at lag 0.
 
 This indicates that the strongest observed relationship was
-**contemporaneous**.
+contemporaneous.
 
-Season-specific analysis identified a peak at approximately **+1 week
-in 2024/25** and **-1 week in 2025/26**.
+Season-specific analysis identified a peak at approximately +1 week
+in 2024/25 and -1 week in 2025/26.
 
 The available data therefore do not demonstrate a consistent syndromic
 lead time.
@@ -884,7 +884,7 @@ confirmed outbreaks.
 
 ### Forecasting
 
-Forecasts are generated for **1–4 weeks ahead**.
+Forecasts are generated for 1–4 weeks ahead.
 
 Three forecasting approaches were evaluated previously using
 rolling-origin validation:
@@ -894,7 +894,7 @@ rolling-origin validation:
 - STL-ETS
 
 During the 2025/26 evaluation, ARIMA produced the lowest MAE in
-**19 of 24 pathogen-horizon comparisons**.
+19 of 24 pathogen-horizon comparisons.
 
 Performance varied by pathogen and forecast horizon. In particular,
 seasonal naïve forecasting outperformed ARIMA for adenovirus at several
@@ -909,7 +909,7 @@ model rather than implying that it is universally optimal.
 NHS 111 acute respiratory infection calls measure syndromic healthcare
 activity rather than laboratory-confirmed influenza.
 
-The overlapping NHS 111 and influenza dataset contains **134 weeks**
+The overlapping NHS 111 and influenza dataset contains 134 weeks
 from February 2024 onwards.
 
 Only two complete respiratory seasons were available for
