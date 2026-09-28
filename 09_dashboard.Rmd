@@ -1,0 +1,930 @@
+---
+title: "England Respiratory Surveillance"
+subtitle: "Multi-pathogen surveillance, statistical signals and short-term forecasting"
+author: "Chandhini Suresh"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+
+# 1. PACKAGES
+
+library(flexdashboard)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+library(forecast)
+library(DT)
+library(scales)
+
+```
+
+
+```{r data, include=FALSE}
+
+# 2. LOAD RESPIRATORY DATA
+
+respiratory <- read_csv(
+  "data/processed/respiratory_surveillance_long.csv",
+  show_col_types = FALSE
+) |>
+  mutate(
+    date = as.Date(date)
+  )
+
+
+# 3. CREATE RESPIRATORY SEASON VARIABLES
+
+respiratory_signals <- respiratory |>
+  mutate(
+    season_start_year =
+      if_else(
+        month(date) >= 7,
+        year(date),
+        year(date) - 1
+      ),
+
+    season =
+      paste0(
+        season_start_year,
+        "/",
+        substr(
+          season_start_year + 1,
+          3,
+          4
+        )
+      ),
+
+    season_start =
+      as.Date(
+        paste0(
+          season_start_year,
+          "-07-01"
+        )
+      ),
+
+    week_of_season =
+      floor(
+        as.numeric(
+          date - season_start
+        ) / 7
+      ) + 1
+  )
+
+
+# 4. IDENTIFY CURRENT RESPIRATORY SEASON
+
+current_season <- respiratory_signals |>
+  filter(
+    date == max(date)
+  ) |>
+  distinct(
+    season
+  ) |>
+  pull(
+    season
+  )
+
+
+# 5. BUILD HISTORICAL SIGNAL BASELINE
+
+historical_baseline <- respiratory_signals |>
+  filter(
+    season != current_season
+  ) |>
+  group_by(
+    disease,
+    week_of_season
+  ) |>
+  summarise(
+    expected =
+      median(
+        positivity,
+        na.rm = TRUE
+      ),
+
+    upper_threshold =
+      quantile(
+        positivity,
+        probs = 0.95,
+        na.rm = TRUE
+      ),
+
+    .groups = "drop"
+  )
+
+
+# 6. APPLY SIGNAL DETECTOR
+
+signals_all <- respiratory_signals |>
+  left_join(
+    historical_baseline,
+    by = c(
+      "disease",
+      "week_of_season"
+    )
+  ) |>
+  mutate(
+    signal =
+      positivity > upper_threshold
+  )
+
+
+# 7. LATEST SIGNAL STATUS
+
+signals <- signals_all |>
+  group_by(
+    disease
+  ) |>
+  slice_max(
+    date,
+    n = 1,
+    with_ties = FALSE
+  ) |>
+  ungroup()
+
+
+# 8. LATEST LABORATORY OBSERVATION
+
+latest_date <- max(
+  respiratory$date,
+  na.rm = TRUE
+)
+
+
+latest_data <- respiratory |>
+  filter(
+    date == latest_date
+  )
+
+
+# 9. RECENT LABORATORY DATA
+
+recent_start <-
+  latest_date - weeks(52)
+
+
+recent_data <- respiratory |>
+  filter(
+    date >= recent_start
+  )
+
+
+# 10. LOAD SYNDROMIC DATA
+
+syndromic <- read_csv(
+  "data/processed/syndromic_influenza_aligned.csv",
+  show_col_types = FALSE
+) |>
+  mutate(
+    week_start =
+      as.Date(week_start)
+  )
+
+
+# 11. LATEST NHS 111 OBSERVATION
+
+latest_nhs111 <- syndromic |>
+  slice_max(
+    week_start,
+    n = 1,
+    with_ties = FALSE
+  )
+
+
+# 12. NHS 111 WEEKLY CHANGE
+
+nhs111_recent <- syndromic |>
+  arrange(
+    week_start
+  ) |>
+  mutate(
+    weekly_change =
+      weekly_calls -
+      lag(weekly_calls),
+
+    percent_change =
+      100 *
+      weekly_change /
+      lag(weekly_calls)
+  )
+
+
+latest_nhs111_change <- nhs111_recent |>
+  slice_max(
+    week_start,
+    n = 1,
+    with_ties = FALSE
+  )
+
+
+# 13. CURRENT FORECAST FUNCTION
+
+forecast_current <- function(data) {
+
+  data <- data |>
+    arrange(
+      date
+    )
+
+  disease_name <-
+    unique(
+      data$disease
+    )
+
+  y <- ts(
+    data$positivity,
+    frequency = 52
+  )
+
+  model <- auto.arima(
+    y,
+    seasonal = TRUE,
+    stepwise = TRUE,
+    approximation = TRUE
+  )
+
+  fc <- forecast(
+    model,
+    h = 4,
+    level = c(
+      80,
+      95
+    )
+  )
+
+  last_date <-
+    max(
+      data$date
+    )
+
+  forecast_dates <- seq(
+    last_date + weeks(1),
+    by = "1 week",
+    length.out = 4
+  )
+
+  tibble(
+    disease =
+      disease_name,
+
+    date =
+      forecast_dates,
+
+    horizon =
+      1:4,
+
+    forecast =
+      as.numeric(
+        fc$mean
+      ),
+
+    lower_80 =
+      as.numeric(
+        fc$lower[, "80%"]
+      ),
+
+    upper_80 =
+      as.numeric(
+        fc$upper[, "80%"]
+      ),
+
+    lower_95 =
+      as.numeric(
+        fc$lower[, "95%"]
+      ),
+
+    upper_95 =
+      as.numeric(
+        fc$upper[, "95%"]
+      )
+  )
+}
+
+
+# 14. GENERATE CURRENT FORECASTS
+
+current_forecasts <- respiratory |>
+  group_by(
+    disease
+  ) |>
+  group_split() |>
+  lapply(
+    forecast_current
+  ) |>
+  bind_rows()
+
+
+# 15. LOAD LEAD-LAG RESULTS
+
+lead_lag <- read_csv(
+  "outputs/tables/change_lag_correlations.csv",
+  show_col_types = FALSE
+)
+
+```
+
+
+Overview
+=====================================
+
+Row
+-------------------------------------
+
+### Latest surveillance week
+
+```{r}
+
+valueBox(
+  format(
+    latest_date,
+    "%d %B %Y"
+  ),
+  caption =
+    "Latest laboratory surveillance week",
+  icon =
+    "fa-calendar"
+)
+
+```
+
+
+### Respiratory pathogens
+
+```{r}
+
+valueBox(
+  n_distinct(
+    respiratory$disease
+  ),
+  caption =
+    "Pathogens monitored",
+  icon =
+    "fa-chart-line"
+)
+
+```
+
+
+### Current statistical signals
+
+```{r}
+
+current_signal_count <- signals |>
+  filter(
+    signal == TRUE
+  ) |>
+  nrow()
+
+
+valueBox(
+  current_signal_count,
+  caption =
+    "Current statistical signals",
+  icon =
+    "fa-exclamation-triangle"
+)
+
+```
+
+
+### Latest NHS 111 ARI calls
+
+```{r}
+
+valueBox(
+  comma(
+    latest_nhs111$weekly_calls
+  ),
+  caption =
+    "Latest complete week",
+  icon =
+    "fa-phone"
+)
+
+```
+
+
+Row
+-------------------------------------
+
+### Current respiratory virus activity
+
+```{r}
+
+latest_plot <- ggplot(
+  latest_data,
+  aes(
+    x = reorder(
+      disease,
+      positivity
+    ),
+    y = positivity
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "PCR positivity (%)"
+  ) +
+  theme_minimal()
+
+
+ggplotly(
+  latest_plot
+)
+
+```
+
+
+### Latest surveillance table
+
+```{r}
+
+latest_table <- latest_data |>
+  select(
+    disease,
+    positivity
+  ) |>
+  arrange(
+    desc(positivity)
+  ) |>
+  mutate(
+    positivity =
+      round(
+        positivity,
+        2
+      )
+  )
+
+
+datatable(
+  latest_table,
+  rownames = FALSE,
+  options = list(
+    dom = "t",
+    pageLength = 6
+  )
+)
+
+```
+
+
+Recent Trends
+=====================================
+
+Row
+-------------------------------------
+
+### Last 12 months
+
+```{r}
+
+recent_plot <- ggplot(
+  recent_data,
+  aes(
+    x = date,
+    y = positivity
+  )
+) +
+  geom_line(
+    linewidth = 0.7
+  ) +
+  facet_wrap(
+    ~ disease,
+    scales = "free_y",
+    ncol = 2
+  ) +
+  labs(
+    x = NULL,
+    y = "PCR positivity (%)"
+  ) +
+  theme_minimal()
+
+
+ggplotly(
+  recent_plot
+)
+
+```
+
+
+Signals
+=====================================
+
+Row
+-------------------------------------
+
+### Current statistical signal status
+
+```{r}
+
+signal_table <- signals |>
+  select(
+    disease,
+    date,
+    positivity,
+    expected,
+    upper_threshold,
+    signal
+  ) |>
+  mutate(
+    positivity =
+      round(
+        positivity,
+        2
+      ),
+
+    expected =
+      round(
+        expected,
+        2
+      ),
+
+    upper_threshold =
+      round(
+        upper_threshold,
+        2
+      )
+  ) |>
+  arrange(
+    desc(signal),
+    disease
+  )
+
+
+datatable(
+  signal_table,
+  rownames = FALSE,
+  options = list(
+    dom = "t",
+    pageLength = 6
+  )
+)
+
+```
+
+
+Row
+-------------------------------------
+
+### Signal interpretation
+
+A statistical signal occurs when observed positivity exceeds the
+historical season-specific 95th percentile threshold.
+
+These are **provisional statistical signals** and should not be
+interpreted as confirmation of an outbreak.
+
+The signal-detection approach was retrospectively evaluated using
+leave-one-season-out validation.
+
+
+Forecasts
+=====================================
+
+Row
+-------------------------------------
+
+### Current 1–4 week forecasts
+
+```{r}
+
+forecast_history <- respiratory |>
+  filter(
+    date >=
+      latest_date - weeks(26)
+  )
+
+
+forecast_plot <- ggplot() +
+
+  geom_line(
+    data =
+      forecast_history,
+
+    aes(
+      x = date,
+      y = positivity
+    ),
+
+    linewidth = 0.7
+  ) +
+
+  geom_ribbon(
+    data =
+      current_forecasts,
+
+    aes(
+      x = date,
+      ymin = lower_95,
+      ymax = upper_95
+    ),
+
+    alpha = 0.15
+  ) +
+
+  geom_ribbon(
+    data =
+      current_forecasts,
+
+    aes(
+      x = date,
+      ymin = lower_80,
+      ymax = upper_80
+    ),
+
+    alpha = 0.25
+  ) +
+
+  geom_line(
+    data =
+      current_forecasts,
+
+    aes(
+      x = date,
+      y = forecast
+    ),
+
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+
+  facet_wrap(
+    ~ disease,
+    scales = "free_y",
+    ncol = 2
+  ) +
+
+  labs(
+    x = NULL,
+
+    y =
+      "PCR positivity (%)",
+
+    caption =
+      "Dashed line: ARIMA forecast | Shading: 80% and 95% prediction intervals"
+  ) +
+
+  theme_minimal()
+
+
+ggplotly(
+  forecast_plot
+)
+
+```
+
+
+Row
+-------------------------------------
+
+### Forecast values
+
+```{r}
+
+forecast_table <- current_forecasts |>
+  mutate(
+    across(
+      c(
+        forecast,
+        lower_80,
+        upper_80,
+        lower_95,
+        upper_95
+      ),
+      ~ round(
+        .x,
+        2
+      )
+    )
+  )
+
+
+datatable(
+  forecast_table,
+  rownames = FALSE,
+  options = list(
+    pageLength = 12
+  )
+)
+
+```
+
+
+Syndromic Surveillance
+=====================================
+
+Row
+-------------------------------------
+
+### NHS 111 acute respiratory infection activity
+
+```{r}
+
+nhs111_plot <- syndromic |>
+  filter(
+    week_start >=
+      max(week_start) - weeks(52)
+  ) |>
+  ggplot(
+    aes(
+      x = week_start,
+      y = weekly_calls
+    )
+  ) +
+  geom_line(
+    linewidth = 0.8
+  ) +
+  labs(
+    x = NULL,
+    y = "Weekly NHS 111 calls"
+  ) +
+  theme_minimal()
+
+
+ggplotly(
+  nhs111_plot
+)
+
+```
+
+
+### Latest weekly change
+
+```{r}
+
+valueBox(
+  paste0(
+    round(
+      latest_nhs111_change$percent_change,
+      1
+    ),
+    "%"
+  ),
+  caption =
+    "Change in NHS 111 ARI calls from previous week",
+  icon =
+    "fa-chart-line"
+)
+
+```
+
+
+Lead-Lag Analysis
+=====================================
+
+Row
+-------------------------------------
+
+### Week-to-week changes
+
+```{r}
+
+lead_lag_plot <- ggplot(
+  lead_lag,
+  aes(
+    x = lag_weeks,
+    y = correlation
+  )
+) +
+
+  geom_hline(
+    yintercept = 0,
+    linetype = "dashed"
+  ) +
+
+  geom_vline(
+    xintercept = 0,
+    linetype = "dotted"
+  ) +
+
+  geom_line(
+    linewidth = 0.8
+  ) +
+
+  geom_point(
+    size = 2.5
+  ) +
+
+  scale_x_continuous(
+    breaks = -6:6
+  ) +
+
+  labs(
+    x = "Lag (weeks)",
+    y = "Pearson correlation"
+  ) +
+
+  theme_minimal()
+
+
+ggplotly(
+  lead_lag_plot
+)
+
+```
+
+
+### Interpretation
+
+Across the available overlapping surveillance period, the strongest
+association between week-to-week changes in NHS 111 acute respiratory
+infection calls and influenza PCR positivity occurred at **lag 0**.
+
+This indicates that the strongest observed relationship was
+**contemporaneous**.
+
+Season-specific analysis identified a peak at approximately **+1 week
+in 2024/25** and **-1 week in 2025/26**.
+
+The available data therefore do not demonstrate a consistent syndromic
+lead time.
+
+
+Methods & Limitations
+=====================================
+
+### Data
+
+Laboratory and syndromic surveillance data were obtained from the
+UK Health Security Agency dashboard API.
+
+The laboratory surveillance dataset contains weekly PCR positivity for
+six respiratory pathogens:
+
+- Influenza
+- Respiratory syncytial virus
+- Human metapneumovirus
+- Rhinovirus
+- Adenovirus
+- Parainfluenza
+
+
+### Statistical signal detection
+
+Expected activity was calculated from historical observations for the
+corresponding week of the respiratory season.
+
+Observations above the empirical historical 95th percentile were
+classified as statistical signals.
+
+This detector is exploratory and was retrospectively evaluated using
+leave-one-season-out validation. Signals should not be interpreted as
+confirmed outbreaks.
+
+
+### Forecasting
+
+Forecasts are generated for **1–4 weeks ahead**.
+
+Three forecasting approaches were evaluated previously using
+rolling-origin validation:
+
+- Seasonal naïve
+- ARIMA
+- STL-ETS
+
+During the 2025/26 evaluation, ARIMA produced the lowest MAE in
+**19 of 24 pathogen-horizon comparisons**.
+
+Performance varied by pathogen and forecast horizon. In particular,
+seasonal naïve forecasting outperformed ARIMA for adenovirus at several
+longer horizons.
+
+The dashboard uses ARIMA as a simple current operational forecasting
+model rather than implying that it is universally optimal.
+
+
+### Syndromic surveillance
+
+NHS 111 acute respiratory infection calls measure syndromic healthcare
+activity rather than laboratory-confirmed influenza.
+
+The overlapping NHS 111 and influenza dataset contains **134 weeks**
+from February 2024 onwards.
+
+Only two complete respiratory seasons were available for
+season-specific lead-lag comparison.
+
+
+### Interpretation
+
+This dashboard is an exploratory epidemiological surveillance project.
+
+Statistical signals indicate unusual observations rather than confirmed
+outbreaks.
+
+Forecasts contain uncertainty and should be interpreted alongside
+observed surveillance data and wider epidemiological evidence.
+
+Lead-lag correlations describe temporal association and do not establish
+causality or a consistent predictive lead.
