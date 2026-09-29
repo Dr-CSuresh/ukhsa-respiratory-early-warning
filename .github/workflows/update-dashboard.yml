@@ -1,0 +1,141 @@
+name: Update respiratory surveillance dashboard
+
+on:
+
+  # Allows us to run the workflow manually whenever we want
+  workflow_dispatch:
+
+  # Automatically update every Thursday at 18:30 UK time
+  schedule:
+    - cron: "30 18 * * 4"
+      timezone: "Europe/London"
+
+  # Rebuild if important surveillance code changes
+  push:
+    branches:
+      - main
+    paths:
+      - "01_fetch_data.R"
+      - "02_clean_data.R"
+      - "06c_current_forecasts.R"
+      - "07_syndromic_surveillance.R"
+      - "08_lead_lag_analysis.R"
+      - "09_dashboard.Rmd"
+      - ".github/workflows/update-dashboard.yml"
+
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+
+jobs:
+
+  update-dashboard:
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+
+      # 1. Download repository
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+
+      # 2. Install R
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+          use-public-rspm: true
+
+
+      # 3. Install Pandoc for R Markdown
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+
+      # 4. Install required R packages
+      - name: Install R packages
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::httr2
+            any::jsonlite
+            any::dplyr
+            any::purrr
+            any::readr
+            any::tidyr
+            any::lubridate
+            any::ggplot2
+            any::forecast
+            any::flexdashboard
+            any::plotly
+            any::DT
+            any::scales
+            any::rmarkdown
+            any::knitr
+            any::htmltools
+
+
+      # 5. Download latest respiratory laboratory surveillance
+      - name: Fetch UKHSA respiratory data
+        run: Rscript 01_fetch_data.R
+
+
+      # 6. Clean and quality-check laboratory data
+      - name: Clean respiratory data
+        run: Rscript 02_clean_data.R
+
+
+      # 7. Generate current 1-4 week forecasts
+      - name: Generate current forecasts
+        run: Rscript 06c_current_forecasts.R
+
+
+      # 8. Download and prepare NHS 111 syndromic surveillance
+      - name: Update NHS 111 surveillance
+        run: Rscript 07_syndromic_surveillance.R
+
+
+      # 9. Update lead-lag analysis
+      - name: Update lead-lag analysis
+        run: Rscript 08_lead_lag_analysis.R
+
+
+      # 10. Render dashboard
+      - name: Render dashboard
+        run: |
+          Rscript -e 'rmarkdown::render(
+            "09_dashboard.Rmd",
+            output_file = "index.html",
+            output_dir = "docs"
+          )'
+
+
+      # 11. Configure GitHub Pages
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+
+      # 12. Upload finished dashboard
+      - name: Upload dashboard
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "docs"
+
+
+      # 13. Publish website
+      - name: Deploy dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
